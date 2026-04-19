@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 37% 97%;       /* #F4F7FA */
+    --foreground: 215 28% 17%;       /* #1E293B */
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+    --primary: 211 55% 23%;          /* #1B3A5C */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 53% 94%;        /* #E8F0F8 */
+    --secondary-foreground: 211 55% 23%;
+    --muted: 210 53% 94%;            /* #E8F0F8 */
+    --muted-foreground: 215 20% 65%; /* #94A3B8 */
+    --accent: 145 21% 45%;           /* #5A8A6E */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 76% 57%;        /* #E53E3E */
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 30% 90%;
+    --input: 213 30% 90%;
+    --ring: 211 55% 23%;
+    --radius: 0.75rem;
+    --chart-1: 211 55% 23%;
+    --chart-2: 145 21% 45%;
+    --chart-3: 145 38% 63%;
+    --chart-4: 210 37% 97%;
+    --chart-5: 215 20% 65%;
+  }
+
+  .dark {
+    --background: 215 28% 10%;
+    --foreground: 210 37% 97%;
+    --card: 215 28% 13%;
+    --card-foreground: 210 37% 97%;
+    --popover: 215 28% 13%;
+    --popover-foreground: 210 37% 97%;
+    --primary: 145 38% 63%;
+    --primary-foreground: 215 28% 10%;
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 210 37% 97%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 145 21% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 76% 57%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 20%;
+    --input: 215 28% 20%;
+    --ring: 145 38% 63%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Animazioni e effetti moderni */
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-2)) 100%);
+  }
+
+  .gradient-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+

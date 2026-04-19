@@ -1,0 +1,373 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Loading } from "@/components/shared/Loading";
+import { StatCard } from "@/components/ui/stat-card";
+import type { ApiResponse, Farmacia, Ordine } from "@/types/api";
+import { ShoppingCart, Package, Activity, Clock, CheckCircle2, AlertCircle, TrendingUp, ArrowRight, Calendar, DollarSign, Send, CreditCard, Banknote, Wallet } from "lucide-react";
+import { PaymentStatusBadge } from "@/components/payments/PaymentStatusBadge";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { OrdiniPerMeseChart } from "@/components/farmacia/OrdiniPerMeseChart";
+import { OrdiniPerStatoChart } from "@/components/farmacia/OrdiniPerStatoChart";
+import { motion } from "framer-motion";
+
+export default function FarmaciaDashboard() {
+  const { data: profile, isLoading: profileLoading } = useQuery<Farmacia>({
+    queryKey: ["farmacia-profile"],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<Farmacia>>("/farmacia/profile");
+      return response.data.data;
+    },
+  });
+
+  const { data: ordini, isLoading: ordiniLoading } = useQuery<Ordine[]>({
+    queryKey: ["farmacia-ordini"],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<Ordine[]>>("/farmacia/ordini");
+      return response.data.data;
+    },
+  });
+
+  if (profileLoading || ordiniLoading) {
+    return <Loading />;
+  }
+
+  const ordiniInAttesa = ordini?.filter((o) => o.stato === "creato" || o.stato === "in_preparazione") || [];
+  const ordiniPronti = ordini?.filter((o) => o.stato === "pronto") || [];
+  const ordiniCompletati = ordini?.filter((o) => o.stato === "consegnato") || [];
+  const ordiniInConsegna = ordini?.filter((o) => o.stato === "in_consegna") || [];
+  const ordiniSpediti = ordini?.filter((o) => o.stato === "spedito") || [];
+
+  // Ordini da spedire: pronti e pagati (o contrassegno)
+  // Nota: Per ora filtriamo solo per stato "pronto", in produzione verificare anche pagamento
+  const ordiniDaSpedire = ordiniPronti || [];
+
+  const totaleOrdini = ordini?.length || 0;
+  const percentualeCompletati = totaleOrdini > 0 ? (ordiniCompletati.length / totaleOrdini) * 100 : 0;
+
+  // Calcola fatturato totale e questo mese
+  const fatturatoTotale = ordini?.reduce((sum, o) => sum + (o.totale || 0), 0) || 0;
+  const oggi = new Date();
+  const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+  const fatturatoQuestoMese = ordini?.filter((o) => {
+    const dataCreazione = new Date(o.dataCreazione);
+    return dataCreazione >= inizioMese && o.stato === "consegnato";
+  }).reduce((sum, o) => sum + (o.totale || 0), 0) || 0;
+
+  // Ordini questo mese
+  const ordiniQuestoMese = ordini?.filter((o) => {
+    const dataCreazione = new Date(o.dataCreazione);
+    return dataCreazione >= inizioMese;
+  }).length || 0;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header con gradiente */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/20 via-primary/10 to-transparent p-6 border border-primary/20"
+      >
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Dashboard Farmacia
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Benvenuto, {profile?.nome}
+            </p>
+          </div>
+          <Link href="/farmacia/ordini">
+            <Button variant="outline" className="hover-lift">
+              Vedi tutti gli ordini
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+        <div className="absolute inset-0 shimmer opacity-30" />
+      </motion.div>
+
+      {/* Statistiche Principali con StatCard */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard
+          title="Ordini in Attesa"
+          value={ordiniInAttesa.length}
+          description="Da preparare"
+          icon={Clock}
+          variant="gradient"
+          delay={0.1}
+          className="border-orange-200 bg-gradient-to-br from-orange-50/50 to-transparent"
+        />
+        <StatCard
+          title="Ordini Pronti"
+          value={ordiniPronti.length}
+          description="Pronti per la consegna"
+          icon={Package}
+          variant="gradient"
+          delay={0.2}
+          className="border-yellow-200 bg-gradient-to-br from-yellow-50/50 to-transparent"
+        />
+        <StatCard
+          title="Completati"
+          value={ordiniCompletati.length}
+          description={`di ${totaleOrdini} totali`}
+          icon={CheckCircle2}
+          variant="gradient"
+          delay={0.3}
+          className="border-green-200 bg-gradient-to-br from-green-50/50 to-transparent"
+        />
+        <StatCard
+          title="Fatturato Mese"
+          value={`€${fatturatoQuestoMese.toFixed(2)}`}
+          description={`${ordiniQuestoMese} ordini questo mese`}
+          icon={DollarSign}
+          variant="gradient"
+          delay={0.4}
+          className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-transparent"
+        />
+      </div>
+
+      {/* Ordini da Spedire */}
+      {ordiniDaSpedire.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <Card className="border-blue-200 bg-blue-50/50 hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5 text-blue-600" />
+                Ordini da Spedire
+              </CardTitle>
+              <Link href="/farmacia/ordini?stato=pronto">
+                <Button variant="ghost" size="sm">
+                  Vedi tutti
+                  <ArrowRight className="ml-1 h-3 w-3" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {ordiniDaSpedire.slice(0, 5).map((ordine, index) => (
+                  <motion.div
+                    key={ordine.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.6 + index * 0.1 }}
+                  >
+                    <Link href={`/farmacia/ordini/${ordine.id}`}>
+                      <div className="flex items-center justify-between p-3 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 transition-all cursor-pointer hover-lift">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">
+                              {ordine.codiceOrdine || `Ordine #${ordine.id}`}
+                            </span>
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                              Pronto
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {new Date(ordine.dataCreazione).toLocaleDateString("it-IT", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                          {ordine.totale && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              Totale: €{Number(ordine.totale || ordine.importoTotale || 0).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                        <Button variant="outline" size="sm" className="ml-2">
+                          Spedisci
+                          <Send className="ml-1 h-3 w-3" />
+                        </Button>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+              {ordiniDaSpedire.length > 5 && (
+                <p className="text-xs text-gray-600 text-center mt-3">
+                  E altri {ordiniDaSpedire.length - 5} ordini da spedire...
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Statistiche Pagamenti */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+      >
+        <Card className="hover-lift">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Statistiche Pagamenti
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.7 }}
+                className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 hover-lift"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <CreditCard className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">Pagamenti Tracciati</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {ordini?.filter((o: any) => 
+                    (o.metodoPagamento === "carta" || o.metodoPagamento === "paypal") && 
+                    o.statoPagamento === "paid"
+                  ).length || 0}
+                </div>
+                <p className="text-xs text-gray-600 mt-1">Carta/PayPal pagati</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.8 }}
+                className="p-4 rounded-lg border border-green-200 bg-green-50/50 hover-lift"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Banknote className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium">Contrassegno</span>
+                </div>
+                <div className="text-2xl font-bold text-green-600">
+                  {ordini?.filter((o: any) => o.metodoPagamento === "contrassegno").length || 0}
+                </div>
+                <p className="text-xs text-gray-600 mt-1">Ordini a contrassegno</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.9 }}
+                className="p-4 rounded-lg border border-yellow-200 bg-yellow-50/50 hover-lift"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-medium">In Attesa</span>
+                </div>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {ordini?.filter((o: any) => 
+                    o.statoPagamento === "pending" || o.statoPagamento === "collecting"
+                  ).length || 0}
+                </div>
+                <p className="text-xs text-gray-600 mt-1">Pagamenti in attesa</p>
+              </motion.div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Grafici */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 1.0 }}
+        className="grid gap-4 md:grid-cols-2"
+      >
+        <div className="animate-scale-in">
+          <OrdiniPerMeseChart ordini={ordini || []} />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: "0.1s" }}>
+          <OrdiniPerStatoChart ordini={ordini || []} />
+        </div>
+      </motion.div>
+
+      {/* Ultimi Ordini */}
+      {ordini && ordini.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.1 }}
+        >
+          <Card className="hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Ultimi Ordini</CardTitle>
+              <Link href="/farmacia/ordini">
+                <Button variant="ghost" size="sm">
+                  Vedi tutti
+                  <ArrowRight className="ml-1 h-3 w-3" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {ordini.slice(0, 5).map((ordine, index) => {
+                  const getStatusColor = (stato: string) => {
+                    switch (stato.toLowerCase()) {
+                      case "creato":
+                      case "in_preparazione":
+                        return "bg-orange-100 text-orange-800 border-orange-200";
+                      case "pronto":
+                        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+                      case "consegnato":
+                        return "bg-green-100 text-green-800 border-green-200";
+                      default:
+                        return "bg-gray-100 text-gray-800 border-gray-200";
+                    }
+                  };
+
+                  return (
+                    <motion.div
+                      key={ordine.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: 1.2 + index * 0.1 }}
+                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-all hover-lift"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm">
+                            {ordine.codiceOrdine || `Ordine #${ordine.id}`}
+                          </span>
+                          <Badge variant="outline" className={getStatusColor(ordine.stato)}>
+                            {ordine.stato}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {new Date(ordine.dataCreazione).toLocaleDateString("it-IT", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                        {ordine.totale && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Totale: €{Number(ordine.totale || ordine.importoTotale || 0).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                      <Link href={`/farmacia/ordini/${ordine.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Dettagli
+                        </Button>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
